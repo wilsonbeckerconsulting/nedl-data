@@ -58,6 +58,6 @@ output_*/
 *.csv
 *.log
 
-# Config with secrets (keep .env.example)
-config.py
+# Local secrets (if any)
+.secrets/
 

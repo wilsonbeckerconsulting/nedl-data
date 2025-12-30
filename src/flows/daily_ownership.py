@@ -17,6 +17,11 @@ Usage:
     python src/flows/daily_ownership.py --start-date 2025-01-01 --end-date 2025-01-31
 """
 
+# Ensure src is importable when running as script
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import argparse
 from datetime import datetime, timedelta
 from typing import Optional
