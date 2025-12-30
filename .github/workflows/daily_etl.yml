@@ -60,9 +60,11 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           # Environment
           ENVIRONMENT: prod
-          # Python path
-          PYTHONPATH: ${{ github.workspace }}
         run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}"
+          echo "PYTHONPATH=${PYTHONPATH}"
+          echo "Current directory: $(pwd)"
+          echo "Contents: $(ls -la)"
           python src/flows/daily_ownership.py \
             ${{ inputs.start_date && format('--start-date {0}', inputs.start_date) || '' }} \
             ${{ inputs.end_date && format('--end-date {0}', inputs.end_date) || '' }}
