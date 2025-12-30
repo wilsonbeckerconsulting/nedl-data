@@ -1,0 +1,19 @@
+# Prefect Deployment Configuration
+# =================================
+# Defines how flows are deployed and scheduled
+
+name: nedl-etl
+
+# Deployments
+deployments:
+  # Hello World - Test deployment
+  - name: hello-world-test
+    entrypoint: src/flows/hello.py:hello_flow
+    work_pool:
+      name: default-agent-pool
+    parameters:
+      name: "NEDL"
+    tags:
+      - test
+      - hello
+

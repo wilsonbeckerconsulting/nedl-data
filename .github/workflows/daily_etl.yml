@@ -1,0 +1,66 @@
+# Daily ETL Pipeline
+# ==================
+# Runs the NEDL ownership dimensional model ETL daily
+#
+# Triggers:
+#   - Scheduled: 5am UTC daily
+#   - Manual: workflow_dispatch button in GitHub UI
+
+name: Daily ETL
+
+on:
+  schedule:
+    - cron: '0 5 * * *'  # 5am UTC daily
+  workflow_dispatch:  # Manual trigger from GitHub UI
+    inputs:
+      start_date:
+        description: 'Start date (YYYY-MM-DD), defaults to yesterday'
+        required: false
+        type: string
+      end_date:
+        description: 'End date (YYYY-MM-DD), defaults to today'
+        required: false
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  run-etl:
+    name: Run Ownership ETL
+    runs-on: ubuntu-latest
+    timeout-minutes: 120  # 2 hour timeout
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run ETL flow
+        env:
+          # Prefect Cloud
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+          # Cherre
+          CHERRE_API_KEY: ${{ secrets.CHERRE_API_KEY }}
+          CHERRE_API_URL: ${{ secrets.CHERRE_API_URL }}
+          # Supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # Environment
+          ENVIRONMENT: prod
+        run: |
+          python src/flows/daily_ownership.py \
+            ${{ inputs.start_date && format('--start-date {0}', inputs.start_date) || '' }} \
+            ${{ inputs.end_date && format('--end-date {0}', inputs.end_date) || '' }}
+
