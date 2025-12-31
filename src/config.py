@@ -19,8 +19,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Environment (staging | prod)
-    environment: str = "staging"
+    # Environment: 'dev' routes all tables to dev schema, 'prod' uses defined schemas
+    environment: str = "dev"
 
     # Cherre API
     cherre_api_key: str = ""

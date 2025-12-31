@@ -2,6 +2,10 @@
 Database Client
 ===============
 Supabase client helpers for raw, app, and analytics schemas.
+
+Environment-aware routing:
+    ENVIRONMENT=dev  → all tables go to 'dev' schema
+    ENVIRONMENT=prod → tables go to their defined schema (raw, analytics, app)
 """
 
 from functools import lru_cache
@@ -24,20 +28,36 @@ def get_supabase_client():
     return create_client(settings.supabase_url, settings.supabase_service_key)
 
 
-def _parse_table_name(table_name: str) -> tuple[str, str]:
+def _resolve_table(table_name: str) -> tuple[str, str]:
     """
-    Parse schema.table format.
+    Resolve table name to (schema, table) based on environment.
+
+    In dev: all tables route to 'dev' schema with original table name
+    In prod: tables use their defined schema (raw, analytics, etc.)
 
     Args:
         table_name: Full table name (e.g., 'raw.cherre_transactions')
 
     Returns:
         Tuple of (schema, table)
+
+    Examples:
+        ENVIRONMENT=prod: 'raw.cherre_transactions' → ('raw', 'cherre_transactions')
+        ENVIRONMENT=dev:  'raw.cherre_transactions' → ('dev', 'cherre_transactions')
     """
+    settings = get_settings()
+
+    # Parse schema.table
     if "." in table_name:
         schema, table = table_name.split(".", 1)
-        return schema, table
-    return "public", table_name
+    else:
+        schema, table = "public", table_name
+
+    # In dev, route everything to 'dev' schema
+    if settings.environment == "dev":
+        return "dev", table
+
+    return schema, table
 
 
 def insert_batch(
@@ -60,7 +80,7 @@ def insert_batch(
         return 0
 
     client = get_supabase_client()
-    schema, table = _parse_table_name(table_name)
+    schema, table = _resolve_table(table_name)
     total = 0
 
     for i in range(0, len(records), batch_size):
@@ -93,7 +113,7 @@ def upsert_batch(
         return 0
 
     client = get_supabase_client()
-    schema, table = _parse_table_name(table_name)
+    schema, table = _resolve_table(table_name)
     total = 0
 
     for i in range(0, len(records), batch_size):
@@ -123,7 +143,7 @@ def read_table(
         List of records
     """
     client = get_supabase_client()
-    schema, table = _parse_table_name(table_name)
+    schema, table = _resolve_table(table_name)
     query = client.schema(schema).table(table).select(columns)
 
     if filters:
