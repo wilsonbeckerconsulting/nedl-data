@@ -80,30 +80,27 @@ This opens a browser to authenticate. Select the **nedl** workspace.
 # Run tests
 make test
 
-# Test Cherre connection
-python scripts/test_cherre.py
-
-# Should output: Status: 200
+# Test full pipeline with a small date range
+make pipeline START=2025-12-29 END=2025-12-30
 ```
 
 ---
 
 ## 5. Run Locally
 
-All local runs write to the `dev` schema (not prod):
+All local runs write to the `dev` schema (not prod). Tables are prefixed with their source schema to avoid collisions (e.g., `dev.raw_cherre_transactions`, `dev.analytics_dim_property`).
 
 ```bash
-# Extract yesterday's data
-make extract
+# Full pipeline: extract → transform → validate
+make pipeline
+make pipeline START=2025-01-01
+make pipeline START=2025-01-01 END=2025-01-31
 
-# Extract specific date range
-make extract START=2025-01-01 END=2025-01-31
-
-# Transform raw → analytics
-make transform
-
-# Run DQ validation
-make validate
+# Or run steps individually:
+make extract                  # Extract yesterday's data
+make extract START=2025-01-01 # Extract from date
+make transform                # Transform raw → analytics
+make validate                 # Run DQ validation
 
 # Full backfill (chunks by month)
 make backfill START=2024-01 END=2024-12
@@ -179,9 +176,129 @@ NOTIFY pgrst, 'reload config';
 
 ### Creating Tables
 
-DDL for raw schema:
+#### Dev Schema (local development)
+
+```sql
+CREATE SCHEMA IF NOT EXISTS dev;
+
+-- Raw tables (prefixed with raw_)
+CREATE TABLE dev.raw_cherre_transactions (
+    id BIGSERIAL PRIMARY KEY,
+    recorder_id TEXT,
+    data JSONB NOT NULL,
+    extracted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE dev.raw_cherre_grantors (
+    id BIGSERIAL PRIMARY KEY,
+    recorder_id TEXT,
+    data JSONB NOT NULL,
+    extracted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE dev.raw_cherre_grantees (
+    id BIGSERIAL PRIMARY KEY,
+    recorder_id TEXT,
+    data JSONB NOT NULL,
+    extracted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE dev.raw_cherre_properties (
+    id BIGSERIAL PRIMARY KEY,
+    tax_assessor_id TEXT,
+    data JSONB NOT NULL,
+    extracted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Analytics tables (prefixed with analytics_)
+CREATE TABLE dev.analytics_dim_property (
+    id BIGSERIAL PRIMARY KEY,
+    property_key INTEGER UNIQUE NOT NULL,
+    tax_assessor_id TEXT,
+    assessor_parcel_number TEXT,
+    property_address TEXT,
+    property_city TEXT,
+    property_state TEXT,
+    property_zip TEXT,
+    property_county TEXT,
+    property_use_code TEXT,
+    land_use_code TEXT,
+    year_built INTEGER,
+    building_sqft INTEGER,
+    land_sqft INTEGER,
+    units_count INTEGER,
+    assessed_value NUMERIC,
+    market_value NUMERIC,
+    latitude NUMERIC,
+    longitude NUMERIC,
+    valid_from DATE,
+    valid_to DATE,
+    is_current BOOLEAN DEFAULT TRUE,
+    source_system TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE dev.analytics_dim_entity (
+    id BIGSERIAL PRIMARY KEY,
+    entity_key INTEGER UNIQUE NOT NULL,
+    canonical_entity_id TEXT,
+    canonical_entity_name TEXT,
+    entity_type TEXT,
+    state TEXT,
+    confidence_score INTEGER,
+    occurrences_count INTEGER,
+    is_resolved BOOLEAN DEFAULT TRUE,
+    resolution_method TEXT,
+    valid_from DATE,
+    valid_to DATE,
+    is_current BOOLEAN DEFAULT TRUE,
+    source_system TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE dev.analytics_fact_transaction (
+    id BIGSERIAL PRIMARY KEY,
+    transaction_key INTEGER UNIQUE NOT NULL,
+    recorder_id TEXT UNIQUE,
+    property_key INTEGER,
+    transaction_date DATE,
+    instrument_date DATE,
+    document_number TEXT,
+    document_type_code TEXT,
+    document_amount NUMERIC,
+    transfer_tax_amount NUMERIC,
+    transaction_category TEXT,
+    is_sale BOOLEAN DEFAULT FALSE,
+    is_arms_length BOOLEAN DEFAULT FALSE,
+    is_inter_family BOOLEAN DEFAULT FALSE,
+    is_foreclosure BOOLEAN DEFAULT FALSE,
+    is_quit_claim BOOLEAN DEFAULT FALSE,
+    is_new_construction BOOLEAN DEFAULT FALSE,
+    is_resale BOOLEAN DEFAULT FALSE,
+    grantor_count INTEGER,
+    grantee_count INTEGER,
+    property_address TEXT,
+    property_city TEXT,
+    property_state TEXT,
+    property_zip TEXT,
+    source_system TEXT,
+    cherre_ingest_datetime TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Permissions
+GRANT ALL ON ALL TABLES IN SCHEMA dev TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA dev TO service_role;
+```
+
+#### Production Schemas (raw + analytics)
+
 ```sql
 CREATE SCHEMA IF NOT EXISTS raw;
+CREATE SCHEMA IF NOT EXISTS analytics;
 
 CREATE TABLE raw.cherre_transactions (
     id BIGSERIAL PRIMARY KEY,
@@ -189,7 +306,7 @@ CREATE TABLE raw.cherre_transactions (
     data JSONB NOT NULL,
     extracted_at TIMESTAMPTZ DEFAULT NOW()
 );
--- (see README for full DDL)
+-- (same pattern for other tables, without prefix)
 ```
 
 ---
@@ -246,8 +363,8 @@ DQ failures emit `nedl.dq.failure` events. To get notified:
 
 ### "401 Unauthorized" from Cherre
 - Check `.env` has correct `CHERRE_API_KEY`
-- Run `python scripts/test_cherre.py` to verify
-- Clear pycache: `make clean`
+- Clear pycache: `make clean` (settings are cached)
+- Try: `make extract START=2025-12-29 END=2025-12-30`
 
 ### "401 Unauthorized" from Prefect
 - Run `prefect cloud login` to re-authenticate
@@ -267,7 +384,11 @@ DQ failures emit `nedl.dq.failure` events. To get notified:
 # Setup
 make setup                    # First-time install
 
-# Dev commands
+# Full pipeline
+make pipeline                 # Extract → Transform → Validate
+make pipeline START=2025-01-01
+
+# Individual steps
 make extract                  # Extract yesterday
 make extract START=2025-01-01 # Extract from date
 make transform                # Raw → Analytics
@@ -277,7 +398,7 @@ make backfill START=2024-01 END=2024-12
 # Quality
 make lint                     # Check code style
 make format                   # Auto-fix formatting
-make typecheck               # Type checking
+make typecheck                # Type checking
 make test                     # Run tests
 make ci                       # Full CI check
 make clean                    # Clear caches

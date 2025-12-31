@@ -103,10 +103,12 @@ The pipeline uses environment-based schema routing to isolate dev from prod data
 | `ENVIRONMENT=prod` | Tables → `raw.*`, `analytics.*` | GitHub Actions |
 
 This means:
-- Running locally writes to `dev.cherre_transactions`, `dev.dim_property`, etc.
+- Running locally writes to `dev.raw_cherre_transactions`, `dev.analytics_dim_property`, etc.
 - GitHub Actions writes to `raw.cherre_transactions`, `analytics.dim_property`, etc.
 
-**Setup**: Create a `dev` schema in Supabase with the same table structure as `raw`/`analytics`.
+The `dev` schema prefixes table names with the source schema to avoid collisions.
+
+**Setup**: Create a `dev` schema in Supabase with prefixed table names (see DDL in PLAYBOOK.md).
 
 ## Flows
 
@@ -119,17 +121,16 @@ This means:
 ### Running Flows Locally
 
 ```bash
-# Extract yesterday's data
-python src/flows/extract.py
+# Full pipeline: extract → transform → validate
+make pipeline
+make pipeline START=2025-01-01
+make pipeline START=2025-01-01 END=2025-01-31
 
-# Extract specific date range
-python src/flows/extract.py --start-date 2025-01-01 --end-date 2025-01-31
-
-# Transform to analytics
-python src/flows/transform_analytics.py
-
-# Run DQ validation
-python src/flows/validate.py
+# Or run steps individually:
+make extract                  # Extract yesterday's data
+make extract START=2025-01-01 # Extract from date
+make transform                # Transform raw → analytics
+make validate                 # Run DQ validation
 ```
 
 ## Project Structure
