@@ -81,6 +81,7 @@ Required secrets (set in GitHub Actions Secrets):
 | `SUPABASE_SERVICE_KEY` | Supabase service role key |
 | `PREFECT_API_KEY` | Prefect Cloud API key |
 | `PREFECT_API_URL` | Prefect Cloud workspace URL |
+| `ENVIRONMENT` | `dev` or `prod` (controls schema routing) |
 
 For local development, create a `.env` file (git-ignored):
 
@@ -89,7 +90,23 @@ export CHERRE_API_KEY="your-key"
 export CHERRE_API_URL="https://graphql.cherre.com/graphql"
 export SUPABASE_URL="https://your-project.supabase.co"
 export SUPABASE_SERVICE_KEY="your-service-key"
+export ENVIRONMENT="dev"  # Routes to dev.* schema
 ```
+
+## Dev vs Prod Environments
+
+The pipeline uses environment-based schema routing to isolate dev from prod data:
+
+| Environment | Schema Routing | When Used |
+|-------------|----------------|-----------|
+| `ENVIRONMENT=dev` | All tables → `dev.*` | Local development (default) |
+| `ENVIRONMENT=prod` | Tables → `raw.*`, `analytics.*` | GitHub Actions |
+
+This means:
+- Running locally writes to `dev.cherre_transactions`, `dev.dim_property`, etc.
+- GitHub Actions writes to `raw.cherre_transactions`, `analytics.dim_property`, etc.
+
+**Setup**: Create a `dev` schema in Supabase with the same table structure as `raw`/`analytics`.
 
 ## Flows
 
@@ -146,9 +163,13 @@ nedl-data/
 │       ├── transform_analytics.py
 │       └── validate.py
 │
+├── scripts/
+│   └── backfill.py            # Historical data backfill with checkpointing
+│
 ├── tests/
 │   ├── test_smoke.py          # Import and settings tests
-│   └── test_module_contracts.py  # Module structure validation
+│   ├── test_module_contracts.py  # Module structure validation
+│   └── test_backfill.py       # Backfill script tests
 │
 ├── .github/workflows/
 │   ├── ci.yml                 # Lint, typecheck, test on PRs
@@ -194,6 +215,33 @@ DQ failures emit custom Prefect events (`nedl.dq.failure`). Set up a Prefect Aut
    - Event: `nedl.dq.failure`
    - Resource: `nedl-data.*`
 3. Add action: Send notification (Slack, email, etc.)
+
+## Backfills
+
+For loading historical data, use the backfill script which chunks by month and tracks progress:
+
+```bash
+# Preview what would be processed (dry run)
+python scripts/backfill.py --start 2024-01 --end 2024-12 --dry-run
+
+# Run backfill for all of 2024
+python scripts/backfill.py --start 2024-01 --end 2024-12
+
+# Only extract (skip transform)
+python scripts/backfill.py --start 2024-06 --end 2024-09 --extract-only
+
+# Stop on first error (don't continue to next month)
+python scripts/backfill.py --start 2024-01 --end 2024-12 --stop-on-error
+
+# Reset progress and start fresh
+python scripts/backfill.py --start 2024-01 --end 2024-12 --reset
+```
+
+**Features:**
+- Processes one month at a time (avoids API timeouts)
+- Saves progress to `.backfill_checkpoint.json`
+- Resumes from where it left off if interrupted
+- Tracks failed months for retry
 
 ## CI/CD
 
