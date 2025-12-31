@@ -6,10 +6,11 @@ Smoke tests - basic sanity checks.
 def test_imports():
     """Verify core modules can be imported."""
     from src import config
-    from src.flows import daily_ownership
+    from src.flows import extract, transform_analytics
 
     assert hasattr(config, "get_settings")
-    assert hasattr(daily_ownership, "daily_ownership_flow")
+    assert hasattr(extract, "extract_flow")
+    assert hasattr(transform_analytics, "transform_analytics_flow")
 
 
 def test_settings_loads():

@@ -7,11 +7,17 @@ Loads from environment variables or .env files.
 
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # Environment (staging | prod)
     environment: str = "staging"
@@ -38,11 +44,6 @@ class Settings(BaseSettings):
 
     # Multifamily property use codes
     mf_codes: list[str] = ["1104", "1105", "1106", "1107", "1108", "1110", "1112"]
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
 
 
 @lru_cache

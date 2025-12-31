@@ -6,7 +6,6 @@ Comprehensive DQ checks for the dimensional model.
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional
 
 from prefect import get_run_logger, task
 
@@ -97,8 +96,8 @@ def validate_data_quality(
     fact_transaction: list[dict],
     bridge_transaction_party: list[dict],
     bridge_property_owner: list[dict],
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> DQReport:
     """
     Run comprehensive data quality validation.
