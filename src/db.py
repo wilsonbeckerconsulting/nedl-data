@@ -4,7 +4,6 @@ Database Client
 Supabase client helpers for raw, app, and analytics schemas.
 """
 
-from datetime import datetime
 from functools import lru_cache
 
 from src.config import get_settings
@@ -23,6 +22,22 @@ def get_supabase_client():
 
     settings = get_settings()
     return create_client(settings.supabase_url, settings.supabase_service_key)
+
+
+def _parse_table_name(table_name: str) -> tuple[str, str]:
+    """
+    Parse schema.table format.
+
+    Args:
+        table_name: Full table name (e.g., 'raw.cherre_transactions')
+
+    Returns:
+        Tuple of (schema, table)
+    """
+    if "." in table_name:
+        schema, table = table_name.split(".", 1)
+        return schema, table
+    return "public", table_name
 
 
 def insert_batch(
@@ -45,11 +60,12 @@ def insert_batch(
         return 0
 
     client = get_supabase_client()
+    schema, table = _parse_table_name(table_name)
     total = 0
 
     for i in range(0, len(records), batch_size):
         batch = records[i : i + batch_size]
-        client.table(table_name).insert(batch).execute()
+        client.schema(schema).table(table).insert(batch).execute()
         total += len(batch)
 
     return total
@@ -77,11 +93,12 @@ def upsert_batch(
         return 0
 
     client = get_supabase_client()
+    schema, table = _parse_table_name(table_name)
     total = 0
 
     for i in range(0, len(records), batch_size):
         batch = records[i : i + batch_size]
-        client.table(table_name).upsert(batch, on_conflict=on_conflict).execute()
+        client.schema(schema).table(table).upsert(batch, on_conflict=on_conflict).execute()
         total += len(batch)
 
     return total
@@ -97,7 +114,7 @@ def read_table(
     Read records from a table.
 
     Args:
-        table_name: Full table name
+        table_name: Full table name (e.g., 'raw.cherre_transactions')
         columns: Columns to select (default: all)
         filters: Optional filters as {column: value}
         limit: Optional row limit
@@ -106,7 +123,8 @@ def read_table(
         List of records
     """
     client = get_supabase_client()
-    query = client.table(table_name).select(columns)
+    schema, table = _parse_table_name(table_name)
+    query = client.schema(schema).table(table).select(columns)
 
     if filters:
         for col, val in filters.items():
@@ -119,35 +137,28 @@ def read_table(
     return result.data
 
 
-def add_metadata(
+def wrap_for_raw(
     records: list[dict],
-    batch_id: str,
-    extracted_at: datetime | None = None,
-    source_start: str | None = None,
-    source_end: str | None = None,
+    id_field: str,
 ) -> list[dict]:
     """
-    Add metadata columns to records for raw tables.
+    Wrap records for raw table insert (JSONB data column pattern).
+
+    Raw tables have: id, <id_field>, data JSONB, extracted_at
 
     Args:
-        records: Records to augment
-        batch_id: Unique batch/run ID
-        extracted_at: Extraction timestamp (defaults to now)
-        source_start: Source query start date
-        source_end: Source query end date
+        records: Raw API records
+        id_field: Field to extract as indexed column (e.g., 'recorder_id')
 
     Returns:
-        Records with metadata columns added
+        List of {<id_field>: ..., data: {...}} ready for insert
     """
-    if extracted_at is None:
-        extracted_at = datetime.utcnow()
-
+    wrapped = []
     for record in records:
-        record["_extracted_at"] = extracted_at.isoformat()
-        record["_batch_id"] = batch_id
-        if source_start:
-            record["_source_query_start"] = source_start
-        if source_end:
-            record["_source_query_end"] = source_end
-
-    return records
+        wrapped.append(
+            {
+                id_field: record.get(id_field),
+                "data": record,  # Full record as JSONB
+            }
+        )
+    return wrapped

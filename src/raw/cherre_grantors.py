@@ -6,7 +6,7 @@ Flattens grantor (seller) records from transactions.
 
 from prefect import get_run_logger, task
 
-from src.db import add_metadata, insert_batch
+from src.db import insert_batch, wrap_for_raw
 
 TABLE_NAME = "raw.cherre_grantors"
 
@@ -43,34 +43,13 @@ def extract_from_transactions(transactions: list[dict]) -> list[dict]:
     return grantors
 
 
-def load(records: list[dict], batch_id: str) -> int:
-    """
-    Load grantor records to raw.cherre_grantors.
-
-    Args:
-        records: Grantor records
-        batch_id: Unique batch ID
-
-    Returns:
-        Number of records inserted
-    """
-    logger = get_run_logger()
-
-    records = add_metadata(records, batch_id)
-    count = insert_batch(TABLE_NAME, records)
-    logger.info(f"✅ Loaded {count:,} records to {TABLE_NAME}")
-
-    return count
-
-
 @task(name="sync-cherre-grantors")
-def sync(transactions: list[dict], batch_id: str) -> int:
+def sync(transactions: list[dict]) -> int:
     """
     Extract grantors from transactions and load.
 
     Args:
         transactions: Raw transactions with nested parties
-        batch_id: Unique batch ID
 
     Returns:
         Number of records loaded
@@ -79,8 +58,8 @@ def sync(transactions: list[dict], batch_id: str) -> int:
     logger.info(f"📊 Syncing {TABLE_NAME}")
 
     grantors = extract_from_transactions(transactions)
-    grantors = add_metadata(grantors, batch_id)
-    count = insert_batch(TABLE_NAME, grantors)
+    wrapped = wrap_for_raw(grantors, id_field="recorder_id")
+    count = insert_batch(TABLE_NAME, wrapped)
 
     logger.info(f"✅ Synced {count:,} grantors")
     return count

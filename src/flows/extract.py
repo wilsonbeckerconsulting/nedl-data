@@ -63,21 +63,21 @@ def extract_flow(
     logger.info("\n📊 PHASE 1: Transactions")
     logger.info("-" * 40)
 
-    txn_result = cherre_transactions.sync(start_date, end_date, batch_id)
+    txn_result = cherre_transactions.sync(start_date, end_date)
     raw_transactions = txn_result["raw_transactions"]
 
     # ==================== EXTRACT PARTIES ====================
     logger.info("\n👥 PHASE 2: Parties")
     logger.info("-" * 40)
 
-    grantor_count = cherre_grantors.sync(raw_transactions, batch_id)
-    grantee_count = cherre_grantees.sync(raw_transactions, batch_id)
+    grantor_count = cherre_grantors.sync(raw_transactions)
+    grantee_count = cherre_grantees.sync(raw_transactions)
 
     # ==================== EXTRACT PROPERTIES ====================
     logger.info("\n🏢 PHASE 3: Properties")
     logger.info("-" * 40)
 
-    prop_result = cherre_properties.sync(raw_transactions, batch_id)
+    prop_result = cherre_properties.sync(raw_transactions)
 
     # ==================== SUMMARY ====================
     logger.info("\n" + "=" * 60)

@@ -6,7 +6,7 @@ Extracts deed/transaction records from Cherre recorder_v2 table.
 
 from prefect import get_run_logger, task
 
-from src.db import add_metadata, insert_batch
+from src.db import insert_batch, wrap_for_raw
 from src.raw.cherre_client import paginated_query
 
 TABLE_NAME = "raw.cherre_transactions"
@@ -118,31 +118,8 @@ def flatten_for_load(transactions: list[dict]) -> list[dict]:
     return flattened
 
 
-def load(records: list[dict], batch_id: str) -> int:
-    """
-    Load transaction records to raw.cherre_transactions.
-
-    Args:
-        records: Transaction records
-        batch_id: Unique batch ID
-
-    Returns:
-        Number of records inserted
-    """
-    logger = get_run_logger()
-
-    # Add metadata
-    records = add_metadata(records, batch_id)
-
-    # Insert
-    count = insert_batch(TABLE_NAME, records)
-    logger.info(f"✅ Loaded {count:,} records to {TABLE_NAME}")
-
-    return count
-
-
 @task(name="sync-cherre-transactions", retries=2, retry_delay_seconds=30)
-def sync(start_date: str, end_date: str, batch_id: str) -> dict:
+def sync(start_date: str, end_date: str) -> dict:
     """
     Extract and load transactions.
 
@@ -154,12 +131,12 @@ def sync(start_date: str, end_date: str, batch_id: str) -> dict:
     # Extract with parties (we need them for grantor/grantee tables)
     raw_transactions = extract(start_date, end_date, include_parties=True)
 
-    # Flatten and load transactions
+    # Flatten for storage (strip nested parties, add counts)
     transactions = flatten_for_load(raw_transactions)
-    transactions = add_metadata(
-        transactions, batch_id, source_start=start_date, source_end=end_date
-    )
-    count = insert_batch(TABLE_NAME, transactions)
+
+    # Wrap for raw table (JSONB pattern)
+    wrapped = wrap_for_raw(transactions, id_field="recorder_id")
+    count = insert_batch(TABLE_NAME, wrapped)
 
     logger.info(f"✅ Synced {count:,} transactions")
 
