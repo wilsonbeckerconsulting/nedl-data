@@ -6,14 +6,32 @@ name: nedl-etl
 
 # Deployments
 deployments:
-  # Hello World - Test deployment
-  - name: hello-world-test
-    entrypoint: src/flows/hello.py:hello_flow
+  # Extract: Cherre → Raw
+  - name: extract-cherre
+    entrypoint: src/flows/extract.py:extract_flow
     work_pool:
       name: default-agent-pool
-    parameters:
-      name: "NEDL"
+    parameters: {}
     tags:
-      - test
-      - hello
+      - extract
+      - cherre
 
+  # Transform: Raw → Analytics
+  - name: transform-analytics
+    entrypoint: src/flows/transform_analytics.py:transform_analytics_flow
+    work_pool:
+      name: default-agent-pool
+    parameters: {}
+    tags:
+      - transform
+      - analytics
+
+  # Validate: DQ checks on Analytics
+  - name: validate-analytics
+    entrypoint: src/flows/validate.py:validate_flow
+    work_pool:
+      name: default-agent-pool
+    parameters: {}
+    tags:
+      - validate
+      - dq
