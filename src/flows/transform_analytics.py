@@ -81,7 +81,7 @@ def transform_analytics_flow() -> dict:
     # Emit success event
     emit_event(
         event="nedl.transform.complete",
-        resource={"prefect.resource.id": "nedl-etl.transform-analytics"},
+        resource={"prefect.resource.id": "nedl-data.transform-analytics"},
         payload=summary,
     )
 

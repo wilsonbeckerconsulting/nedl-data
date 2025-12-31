@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nedl-etl"
+name = "nedl-data"
 version = "0.1.0"
 description = "NEDL Ownership ETL Pipeline"
 readme = "README.md"

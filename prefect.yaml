@@ -2,7 +2,7 @@
 # =================================
 # Defines how flows are deployed and scheduled
 
-name: nedl-etl
+name: nedl-data
 
 # Deployments
 deployments:

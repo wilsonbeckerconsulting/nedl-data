@@ -103,7 +103,7 @@ def validate_flow() -> dict:
         failed_checks = [c for c in dq_report.checks if c["status"] == "FAIL"]
         emit_event(
             event="nedl.dq.failure",
-            resource={"prefect.resource.id": "nedl-etl.validate-analytics"},
+            resource={"prefect.resource.id": "nedl-data.validate-analytics"},
             payload={
                 "failed_count": dq_report.failed,
                 "total_checks": dq_report.total,
@@ -118,7 +118,7 @@ def validate_flow() -> dict:
         # Emit success event
         emit_event(
             event="nedl.dq.success",
-            resource={"prefect.resource.id": "nedl-etl.validate-analytics"},
+            resource={"prefect.resource.id": "nedl-data.validate-analytics"},
             payload=summary,
         )
 
