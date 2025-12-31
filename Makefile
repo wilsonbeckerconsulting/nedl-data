@@ -2,7 +2,7 @@
 # =================
 # Run `make setup` after cloning to install dependencies and hooks
 
-.PHONY: setup install lint format typecheck test ci clean extract transform validate backfill
+.PHONY: setup install lint format typecheck test ci clean extract transform validate backfill pipeline
 
 # First-time setup (run after clone)
 setup: install
@@ -68,4 +68,12 @@ validate:
 
 backfill:
 	python scripts/backfill.py $(BACKFILL_ARGS)
+
+# Full pipeline: extract → transform → validate
+# Usage:
+#   make pipeline                              # yesterday's data
+#   make pipeline START=2025-01-01             # from date to today
+#   make pipeline START=2025-01-01 END=2025-01-31
+pipeline: extract transform validate
+	@echo "✅ Pipeline complete!"
 
