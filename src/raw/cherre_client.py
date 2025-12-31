@@ -30,7 +30,7 @@ def query_cherre(query: str, variables: dict | None = None, retry: int = 0) -> d
         "Authorization": f"Bearer {settings.cherre_api_key}",
         "Content-Type": "application/json",
     }
-    payload = {"query": query}
+    payload: dict = {"query": query}
     if variables:
         payload["variables"] = variables
 

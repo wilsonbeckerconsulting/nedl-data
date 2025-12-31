@@ -134,7 +134,7 @@ def read_table(
         query = query.limit(limit)
 
     result = query.execute()
-    return result.data
+    return list(result.data)  # type: ignore[arg-type]
 
 
 def wrap_for_raw(
