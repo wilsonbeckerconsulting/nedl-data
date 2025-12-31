@@ -1,6 +1,6 @@
-# NEDL ETL Pipeline
+# NEDL Data Pipeline
 
-Prefect-based ETL pipeline that extracts ownership data from Cherre, transforms it into a dimensional model, and loads it to Supabase.
+Prefect-based ETL pipeline that extracts ownership data from Cherre, transforms it into a dimensional model, validates data quality, and loads it to Supabase.
 
 ## Architecture
 
@@ -72,7 +72,7 @@ Required secrets (set in GitHub Actions or `.env` for local dev):
 |------|----------|-------------|
 | `extract-cherre` | Daily 5am UTC | Cherre → raw schema |
 | `transform-analytics` | After extract | raw → analytics schema |
-| `transform-app` | After extract | raw → app schema |
+| `validate-analytics` | After transform | DQ checks, emits alerts on failure |
 
 ## Project Structure
 
