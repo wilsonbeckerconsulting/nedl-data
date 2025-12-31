@@ -23,9 +23,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from prefect import flow, get_run_logger
+from prefect.events import emit_event
 
 from src.config import get_settings
 
@@ -51,6 +53,30 @@ from src.validation.data_quality import validate_data_quality
 
 # Load
 from src.load.supabase import load_to_supabase
+
+
+def send_dq_alert(dq_report, start_date: str, end_date: str):
+    """
+    Emit a Prefect event for DQ failures.
+    This can trigger Prefect Automations for alerting.
+    """
+    failed_checks = [c for c in dq_report.checks if c['status'] == 'FAIL']
+    
+    # Emit a custom event that Prefect Automations can trigger on
+    emit_event(
+        event="nedl.dq.failure",
+        resource={"prefect.resource.id": "nedl-etl.dq-check"},
+        payload={
+            "start_date": start_date,
+            "end_date": end_date,
+            "failed_count": dq_report.failed,
+            "total_checks": dq_report.total,
+            "failed_checks": [
+                {"check": c["check"], "percentage": c["percentage"]}
+                for c in failed_checks
+            ],
+        },
+    )
 
 
 @flow(name="daily-ownership-etl", log_prints=True)
@@ -156,7 +182,19 @@ def daily_ownership_flow(
     logger.info("\n📤 PHASE 4: LOAD")
     logger.info("-" * 40)
     
-    if dq_report.failed == 0:
+    if dq_report.failed > 0:
+        # Log the failures
+        logger.error(f"❌ DATA QUALITY FAILED: {dq_report.failed} checks failed")
+        for check in dq_report.checks:
+            if check['status'] == 'FAIL':
+                logger.error(f"   ❌ {check['check']}: {check['percentage']} - {check.get('message', '')}")
+        
+        # Send notification (flow continues)
+        send_dq_alert(dq_report, start_date, end_date)
+        
+        # Skip load but don't fail
+        load_result = {"skipped": True, "reason": f"{dq_report.failed} DQ failures"}
+    else:
         load_result = load_to_supabase(
             dim_property=dim_property,
             dim_entity=dim_entity,
@@ -165,9 +203,6 @@ def daily_ownership_flow(
             bridge_transaction_party=bridge_transaction_party,
             bridge_property_owner=bridge_property_owner,
         )
-    else:
-        logger.error(f"❌ Skipping load: {dq_report.failed} DQ checks failed")
-        load_result = {"skipped": True, "reason": f"{dq_report.failed} DQ failures"}
     
     # ==================== SUMMARY ====================
     logger.info("\n" + "=" * 60)
