@@ -16,10 +16,15 @@ def read_source() -> tuple[list[dict], dict]:
     """
     Read transactions from raw and property lookup from analytics.
 
+    Raw tables store data in JSONB 'data' column.
+
     Returns:
         Tuple of (transactions, property_key_lookup)
     """
-    transactions = read_table("raw.cherre_transactions")
+    raw_transactions = read_table("raw.cherre_transactions")
+
+    # Extract data from JSONB column
+    transactions = [row.get("data", {}) for row in raw_transactions]
 
     # Build property lookup from dim_property
     dim_property = read_table("analytics.dim_property", columns="tax_assessor_id, property_key")

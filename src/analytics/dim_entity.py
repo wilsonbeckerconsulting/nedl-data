@@ -16,11 +16,17 @@ def read_source() -> tuple[list[dict], list[dict]]:
     """
     Read grantors and grantees from raw tables.
 
+    Raw tables store data in JSONB 'data' column.
+
     Returns:
-        Tuple of (grantors, grantees)
+        Tuple of (grantors, grantees) with data extracted
     """
-    grantors = read_table("raw.cherre_grantors")
-    grantees = read_table("raw.cherre_grantees")
+    raw_grantors = read_table("raw.cherre_grantors")
+    raw_grantees = read_table("raw.cherre_grantees")
+
+    # Extract data from JSONB column
+    grantors = [row.get("data", {}) for row in raw_grantors]
+    grantees = [row.get("data", {}) for row in raw_grantees]
 
     return grantors, grantees
 

@@ -19,18 +19,23 @@ def read_source() -> list[dict]:
     Returns:
         List of property records (deduplicated to latest per tax_assessor_id)
     """
-    # Read all properties
-    properties = read_table("raw.cherre_properties")
+    # Read all properties (stored as JSONB in 'data' column)
+    raw_rows = read_table("raw.cherre_properties")
 
-    # Deduplicate: keep latest _extracted_at per tax_assessor_id
+    # Deduplicate: keep latest extracted_at per tax_assessor_id
     by_tax_id: dict[str, dict] = {}
-    for prop in properties:
-        tax_id = prop.get("tax_assessor_id")
+    for row in raw_rows:
+        # Extract the JSONB data
+        prop = row.get("data", {})
+        tax_id = row.get("tax_assessor_id") or prop.get("tax_assessor_id")
         if not tax_id:
             continue
 
+        extracted_at = row.get("extracted_at", "")
         existing = by_tax_id.get(tax_id)
-        if not existing or prop.get("_extracted_at", "") > existing.get("_extracted_at", ""):
+        if not existing or extracted_at > existing.get("_extracted_at", ""):
+            # Flatten: merge data with extracted_at for downstream
+            prop["_extracted_at"] = extracted_at
             by_tax_id[tax_id] = prop
 
     return list(by_tax_id.values())
