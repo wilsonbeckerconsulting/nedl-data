@@ -5,41 +5,40 @@ Environment-aware settings using pydantic-settings.
 Loads from environment variables or .env files.
 """
 
-import os
 from functools import lru_cache
-from typing import List
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment."""
-    
+
     # Environment (staging | prod)
     environment: str = "staging"
-    
+
     # Cherre API
     cherre_api_key: str = ""
     cherre_api_url: str = "https://graphql.cherre.com/graphql"
-    
+
     # Supabase
     supabase_url: str = ""
     supabase_service_key: str = ""
-    
+
     # Database (direct connection)
     db_host: str = ""
     db_port: str = "5432"
     db_name: str = "postgres"
     db_user: str = "postgres"
     db_password: str = ""
-    
+
     # Pipeline settings
     batch_size: int = 500
     page_size: int = 500
     max_retries: int = 3
-    
+
     # Multifamily property use codes
-    mf_codes: List[str] = ["1104", "1105", "1106", "1107", "1108", "1110", "1112"]
-    
+    mf_codes: list[str] = ["1104", "1105", "1106", "1107", "1108", "1110", "1112"]
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -50,4 +49,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
-

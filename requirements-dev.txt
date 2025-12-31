@@ -1,8 +1,9 @@
 # Development dependencies
 # Install with: pip install -r requirements-dev.txt
 
-# Linting
-ruff>=0.1.0
+# Linting & Formatting
+ruff>=0.8.0
+pre-commit>=3.5.0
 
 # Type checking
 pyright>=1.1.0
