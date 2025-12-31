@@ -61,3 +61,6 @@ output_*/
 # Local secrets (if any)
 .secrets/
 
+# Backfill checkpoint
+scripts/.backfill_checkpoint.json
+
