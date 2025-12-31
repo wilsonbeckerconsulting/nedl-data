@@ -1,5 +1,7 @@
 """
-Smoke tests - basic sanity checks.
+Smoke Tests
+===========
+Basic sanity checks for imports and configuration.
 """
 
 
@@ -14,16 +16,26 @@ def test_imports():
     assert hasattr(validate, "validate_flow")
 
 
-def test_settings_loads():
-    """Verify settings can be instantiated (with defaults/env vars)."""
-    import os
+def test_settings_loads(settings):
+    """Verify settings can be instantiated (uses fixture from conftest.py)."""
+    assert settings.cherre_api_url == "https://graphql.cherre.com/graphql"
+    assert settings.environment in ("dev", "prod", "staging")
 
-    # Set required env vars for test
-    os.environ.setdefault("CHERRE_API_KEY", "test-key")
-    os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
-    os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-key")
 
-    from src.config import get_settings
+def test_raw_modules_importable():
+    """Verify raw modules can be imported."""
+    from src.raw import cherre_grantees, cherre_grantors, cherre_properties, cherre_transactions
 
-    settings = get_settings()
-    assert settings.cherre_api_key == "test-key" or len(settings.cherre_api_key) > 0
+    assert cherre_transactions.TABLE_NAME == "raw.cherre_transactions"
+    assert cherre_properties.TABLE_NAME == "raw.cherre_properties"
+    assert cherre_grantors.TABLE_NAME == "raw.cherre_grantors"
+    assert cherre_grantees.TABLE_NAME == "raw.cherre_grantees"
+
+
+def test_analytics_modules_importable():
+    """Verify analytics modules can be imported."""
+    from src.analytics import dim_entity, dim_property, fact_transaction
+
+    assert dim_property.TABLE_NAME == "analytics.dim_property"
+    assert dim_entity.TABLE_NAME == "analytics.dim_entity"
+    assert fact_transaction.TABLE_NAME == "analytics.fact_transaction"

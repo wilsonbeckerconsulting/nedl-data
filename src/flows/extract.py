@@ -22,7 +22,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
-import uuid
 from datetime import datetime, timedelta
 
 from prefect import flow, get_run_logger
@@ -46,10 +45,7 @@ def extract_flow(
         Summary of records extracted
     """
     logger = get_run_logger()
-
-    # Generate unique batch ID for this run
-    batch_id = str(uuid.uuid4())
-    logger.info(f"🚀 Starting extract flow (batch_id: {batch_id[:8]}...)")
+    logger.info("🚀 Starting extract flow")
 
     # Default dates
     if not start_date:
@@ -85,7 +81,6 @@ def extract_flow(
     logger.info("=" * 60)
 
     summary = {
-        "batch_id": batch_id,
         "date_range": {"start": start_date, "end": end_date},
         "counts": {
             "transactions": txn_result["count"],
@@ -118,7 +113,7 @@ def main():
     )
 
     print("\nExtract complete!")
-    print(f"Batch ID: {result['batch_id']}")
+    print(f"Date range: {result['date_range']['start']} to {result['date_range']['end']}")
     print(f"Total records: {sum(result['counts'].values()):,}")
 
 

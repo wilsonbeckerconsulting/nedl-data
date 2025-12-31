@@ -50,28 +50,13 @@ def validate_flow() -> dict:
     dim_entity = read_table("analytics.dim_entity")
     logger.info(f"   dim_entity: {len(dim_entity):,} rows")
 
-    # dim_entity_identifier may not exist yet
-    try:
-        dim_entity_identifier = read_table("analytics.dim_entity_identifier")
-    except Exception:
-        dim_entity_identifier = []
-    logger.info(f"   dim_entity_identifier: {len(dim_entity_identifier):,} rows")
-
     fact_transaction = read_table("analytics.fact_transaction")
     logger.info(f"   fact_transaction: {len(fact_transaction):,} rows")
 
-    # Bridge tables may not exist yet
-    try:
-        bridge_transaction_party = read_table("analytics.bridge_transaction_party")
-    except Exception:
-        bridge_transaction_party = []
-    logger.info(f"   bridge_transaction_party: {len(bridge_transaction_party):,} rows")
-
-    try:
-        bridge_property_owner = read_table("analytics.bridge_property_owner")
-    except Exception:
-        bridge_property_owner = []
-    logger.info(f"   bridge_property_owner: {len(bridge_property_owner):,} rows")
+    # Optional tables (not yet implemented)
+    dim_entity_identifier: list[dict] = []
+    bridge_transaction_party: list[dict] = []
+    bridge_property_owner: list[dict] = []
 
     # ==================== RUN DQ CHECKS ====================
     logger.info("\n✅ Running data quality checks")

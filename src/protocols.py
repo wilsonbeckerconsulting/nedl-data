@@ -1,7 +1,10 @@
 """
 Module Protocols
 ================
-Type contracts for raw, app, and analytics modules.
+Type contracts for raw and analytics modules.
+
+These define the expected interface for each module type.
+Actual enforcement is done via test_module_contracts.py.
 """
 
 from typing import Any, Protocol, runtime_checkable
@@ -13,45 +16,38 @@ class RawTableModule(Protocol):
     Contract for raw layer modules.
 
     Each module extracts from an external source and loads to raw schema.
+
+    Required attributes:
+        TABLE_NAME: Full table name (e.g., 'raw.cherre_transactions')
+
+    Required methods:
+        sync(): Extract and load data. Returns dict with results or int count.
     """
 
     TABLE_NAME: str
 
-    def extract(self, start_date: str, end_date: str) -> list[dict]:
-        """Extract records from external source."""
-        ...
-
-    def load(self, records: list[dict], batch_id: str) -> int:
-        """Load records to raw table. Returns row count."""
-        ...
-
-    def sync(self, start_date: str, end_date: str, batch_id: str) -> int:
-        """Extract and load. Returns row count."""
+    def sync(self, *args: Any, **kwargs: Any) -> Any:
+        """Extract and load. Returns result dict or row count."""
         ...
 
 
 @runtime_checkable
-class TransformTableModule(Protocol):
+class AnalyticsTableModule(Protocol):
     """
-    Contract for app and analytics layer modules.
+    Contract for analytics layer modules.
 
-    Each module reads from raw/other tables and writes to its target table.
+    Each module reads from raw/other tables and transforms to dimensional model.
+
+    Required attributes:
+        TABLE_NAME: Full table name (e.g., 'analytics.dim_property')
+        SOURCE_TABLES: List of source table names
+
+    Required methods:
+        build(): Full pipeline (read → transform → load). Returns row count.
     """
 
     TABLE_NAME: str
     SOURCE_TABLES: list[str]
-
-    def read_source(self) -> Any:
-        """Read from source tables."""
-        ...
-
-    def transform(self, *args: Any) -> list[dict]:
-        """Transform source data to target format."""
-        ...
-
-    def load(self, records: list[dict]) -> int:
-        """Load records to target table. Returns row count."""
-        ...
 
     def build(self) -> int:
         """Full pipeline: read → transform → load. Returns row count."""

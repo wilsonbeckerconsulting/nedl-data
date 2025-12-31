@@ -30,13 +30,6 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: str = ""
 
-    # Database (direct connection)
-    db_host: str = ""
-    db_port: str = "5432"
-    db_name: str = "postgres"
-    db_user: str = "postgres"
-    db_password: str = ""
-
     # Pipeline settings
     batch_size: int = 500
     page_size: int = 500
