@@ -238,15 +238,29 @@ def validate_data_quality(
     # fact_transaction.property_key → dim_property
     if len(fact_transaction) > 0:
         txns_with_prop_key = [t for t in fact_transaction if t.get("property_key")]
+        txns_without_prop_key = len(fact_transaction) - len(txns_with_prop_key)
         valid_fk = sum(1 for t in txns_with_prop_key if t["property_key"] in valid_property_keys)
-        dq_check(
-            report,
-            "REFERENTIAL_INTEGRITY",
-            "fact_transaction.property_key → dim_property",
-            valid_fk,
-            len(txns_with_prop_key),
-            message="All non-null FKs must exist in parent table",
-        )
+
+        # This check only applies to transactions WITH a property_key assigned
+        # Many transactions won't match MF properties - that's expected
+        if len(txns_with_prop_key) > 0:
+            dq_check(
+                report,
+                "REFERENTIAL_INTEGRITY",
+                "fact_transaction.property_key → dim_property",
+                valid_fk,
+                len(txns_with_prop_key),
+                message=f"{valid_fk}/{len(txns_with_prop_key)} with FK match dim_property ({txns_without_prop_key} have NULL property_key)",
+            )
+        else:
+            # No transactions have property_key - that's okay, just note it
+            record_stat(
+                report,
+                "COVERAGE",
+                "Transactions with property_key",
+                f"0/{len(fact_transaction)} (0.0%)",
+                description="Expected: most transactions don't match MF properties",
+            )
 
     # bridge_transaction_party → fact_transaction
     if len(bridge_transaction_party) > 0:

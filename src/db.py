@@ -43,7 +43,7 @@ def _resolve_table(table_name: str) -> tuple[str, str]:
 
     Examples:
         ENVIRONMENT=prod: 'raw.cherre_transactions' → ('raw', 'cherre_transactions')
-        ENVIRONMENT=dev:  'raw.cherre_transactions' → ('dev', 'cherre_transactions')
+        ENVIRONMENT=dev:  'raw.cherre_transactions' → ('dev', 'raw_cherre_transactions')
     """
     settings = get_settings()
 
@@ -53,9 +53,9 @@ def _resolve_table(table_name: str) -> tuple[str, str]:
     else:
         schema, table = "public", table_name
 
-    # In dev, route everything to 'dev' schema
+    # In dev, route everything to 'dev' schema with schema prefix on table name
     if settings.environment == "dev":
-        return "dev", table
+        return "dev", f"{schema}_{table}"
 
     return schema, table
 
