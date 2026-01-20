@@ -63,7 +63,7 @@ jobs:
           # Environment
           ENVIRONMENT: prod
         run: |
-          python src/flows/extract.py \
+          python src/flows/extract_cherre.py \
             ${{ inputs.start_date && format('--start-date {0}', inputs.start_date) || '' }} \
             ${{ inputs.end_date && format('--end-date {0}', inputs.end_date) || '' }}
 
